@@ -626,6 +626,37 @@ class SQLiteHandler:
 
         return self.query_db(domain_sid, query, params, obj_type="trustee")
 
+    def get_objs_in_ous(self, ou_ids, domain_sid):
+        """
+        Get directly contained users/computers for multiple OUs in one query.
+        """
+
+        if not ou_ids:
+            return []
+
+        placeholders = ",".join("?" for _ in ou_ids)
+
+        query = f"""
+        SELECT
+            o.objectGUID AS ou_objectid,
+            o.distinguishedName AS ou_distinguishedname,
+            t.*
+        FROM ous o
+        JOIN trustees t
+        ON UPPER(t.distinguishedName) LIKE '%,' || UPPER(o.distinguishedName)
+        AND (
+            LENGTH(t.distinguishedName) - LENGTH(REPLACE(t.distinguishedName, ',', ''))
+            =
+            LENGTH(o.distinguishedName) - LENGTH(REPLACE(o.distinguishedName, ',', '')) + 1
+        )
+        WHERE UPPER(o.objectGUID) IN ({placeholders})
+        AND UPPER(t.type) IN ('USER', 'COMPUTER');
+        """
+
+        params = tuple(ou_id.upper() for ou_id in ou_ids)
+
+        return self.query_db(domain_sid, query, params, obj_type="trustee")
+
 
 class LDAPDatabaseBuilder:
     """

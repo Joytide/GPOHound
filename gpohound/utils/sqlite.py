@@ -634,8 +634,6 @@ class SQLiteHandler:
         if not ou_ids:
             return []
 
-        placeholders = ",".join("?" for _ in ou_ids)
-
         query = f"""
         SELECT
             o.objectGUID AS ou_objectid,
@@ -649,11 +647,11 @@ class SQLiteHandler:
             =
             LENGTH(o.distinguishedName) - LENGTH(REPLACE(o.distinguishedName, ',', '')) + 1
         )
-        WHERE UPPER(o.objectGUID) IN ({placeholders})
+        WHERE UPPER(o.objectGUID) IN (SELECT UPPER(value) FROM json_each(?))
         AND UPPER(t.type) IN ('USER', 'COMPUTER');
         """
 
-        params = tuple(ou_id.upper() for ou_id in ou_ids)
+        params = (json.dumps(ou_ids),)
 
         return self.query_db(domain_sid, query, params, obj_type="trustee")
 

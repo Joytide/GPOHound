@@ -394,7 +394,7 @@ class ActiveDirectoryUtils:
             if not results:
                 return None
 
-            found_ous = [record["affected"] for record in results]
+            found_ous = self.bloodhound.nodes_to_dict(results)
 
             for ou in found_ous:
                 users_names = ou.get("Users", [])
